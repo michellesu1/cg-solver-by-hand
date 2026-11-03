@@ -1,0 +1,7 @@
+# build outputs
+test_cpu
+test_gpu
+*.dSYM/
+
+# macOS
+.DS_Store
