@@ -139,7 +139,7 @@ public:
 //   dividing (what would i / n give you with ints?).
 template <typename Real>
 Mesh<Real> makeGridMesh(int n)
-//!origin is bottom left
+//origin is bottom left. cannot deduce Real from args
 {
     Mesh<Real> m;
     m.reserve((n+1)*(n+1), 2*n*n);
@@ -148,16 +148,19 @@ Mesh<Real> makeGridMesh(int n)
     for (int j = 0; j <= n; j++) {
         Real cur_y = static_cast<Real>(j)/ static_cast<Real>(n);
         // cast not do Real{} becase big ints can be greater than Real
-
+        //div slow do once outside
+        //ROW MAJOR J OUTER I INNER
         for (int i = 0; i <= n; i++) {
             Real cur_x = static_cast<Real>(i)/ static_cast<Real>(n);
             m.addVertex(cur_x, cur_y);
+            //priv so can't edit directly
                         
         }
     }
 
     auto get_index = [n](int i, int j) {return j*(n+1) + i;};
     //lambda auto type, indices not valeus so i and j better
+    // &n can dangle
 
     for (int j = 0; j < n; j++) {
         for (int i = 0; i < n; i++) {
@@ -172,5 +175,7 @@ Mesh<Real> makeGridMesh(int n)
         }
     }
     return m;
+    // Copy elision = the compiler skips a copy or move entirely by building the object directly where it will end up.
+    // or returning local will move auto
 
 }

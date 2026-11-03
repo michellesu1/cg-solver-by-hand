@@ -5,3 +5,4 @@ test_gpu
 
 # macOS
 .DS_Store
+bench_cpu

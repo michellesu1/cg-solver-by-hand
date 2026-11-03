@@ -14,7 +14,8 @@ You write every function body. The headers have the signatures plus `TODO` comme
 | `kernels.cuh` | 4, 5, 6 | area kernels, three reductions, CSR SpMV |
 | `csr.h` | 6 | building a sparse matrix, CPU SpMV |
 | `RESULTS.md` | 7 | your timings and explanations |
-| `test_cpu.cpp`, `test_gpu.cu` | | tests (given) |
+| `cpu_perf.h` | 8 (optional) | CPU performance: accumulators, SIMD, threads, false sharing, cache blocking |
+| `test_cpu.cpp`, `test_gpu.cu`, `bench_cpu.cpp` | | tests (given) |
 
 ## Milestones
 
@@ -27,21 +28,9 @@ You write every function body. The headers have the signatures plus `TODO` comme
 | 5 | Reductions | atomics, shared memory, `__syncthreads`, warp shuffles, non-type template parameters |
 | 6 | CSR SpMV | sparse formats, irregular memory access, memory-bound kernels (CPU half in `csr.h`) |
 | 7 | Write-up | bandwidth vs peak, explaining performance |
+| 8 | CPU performance (optional) | dependency chains, auto-vectorization, `__restrict__`, `std::thread`, false sharing, cache blocking |
 
 Suggested order: 1 → 2 → 6 (CPU half, `csr.h`) on your Mac, then 3 → 4 → 5 → 6 (GPU half) on Colab, then 7.
-
-## Read first
-
-Topic numbers refer to my C++ study guide (not included in this repo).
-
-| Milestone | Read these topics first |
-|---|---|
-| 1 | 1-4 (`const`, `constexpr`, `auto`, `static_cast`), 8-10 (classes, constructors), 12 (`std::move`), 15 (templates), 17-18 (`vector`, `array`) |
-| 2 | 5 (passing by `const&`), 19-20 (range-for, lambdas, algorithms) |
-| 3 | 11-13 (destructors, RAII, move operations, rule of 5) |
-| 4 | CUDA basics: threads/blocks/grids, global index, grid-stride loops, coalescing |
-| 5 | 16 (non-type template parameters), plus shared memory, `__syncthreads`, warp shuffles |
-| 6 | CSR format (see the comment in `csr.h`) |
 
 ## Running
 
@@ -52,6 +41,13 @@ make cpu
 ```
 
 Warnings about unused parameters are expected until you fill in the TODOs. `-Wconversion` warnings are worth reading: they point at missing `static_cast`s.
+
+**Milestone 8 (CPU performance), also on your Mac:**
+
+```bash
+make perf   # tests + timings, built with -O3
+make vec    # which loops the compiler vectorized, and why not
+```
 
 **On Google Colab (Milestones 3-7).** Macs don't have NVIDIA GPUs, so the CUDA parts run on Colab's free GPU:
 
