@@ -115,41 +115,57 @@ public:
 
 // Times GPU work with CUDA events. Also RAII: events are created in the
 // constructor and destroyed in the destructor.
+
+
+
 class GpuTimer
 {
 private:
     cudaEvent_t m_start{};
     cudaEvent_t m_stop{};
+//     cudaEvent_t e;
+// CUDA_CHECK(cudaEventCreate(&e));
+// // ... use e ...
+// CUDA_CHECK(cudaEventDestroy(e));   // no & here: only reads it
 
 public:
     // TODO 3.9: create both events (cudaEventCreate).
     GpuTimer()
     {
-
+        CUDA_CHECK(cudaEventCreate(&m_start));
+        CUDA_CHECK(cudaEventCreate(&m_stop)); //writing to location, address/ptr
     }
 
     // TODO 3.10: destroy both events (cudaEventDestroy).
     ~GpuTimer()
     {
-
+        CUDA_CHECK(cudaEventCreate(m_start));
+        CUDA_CHECK(cudaEventCreate(m_stop)); //deleting content
     }
 
-    GpuTimer(const GpuTimer&) = delete;
+    GpuTimer(const GpuTimer&) = delete; 
     GpuTimer& operator=(const GpuTimer&) = delete;
+
+    //don't need 4 & 5. timers aren't moved
 
     // TODO 3.11: record m_start (cudaEventRecord).
     void start()
     {
+        CUDA_CHECK(cudaEventRecord(m_start));
     }
 
     // TODO 3.12: record m_stop, then wait for it (cudaEventSynchronize).
     void stop()
     {
+        CUDA_CHECK(cudaEventRecord(m_stop));
+        CUDA_CHECK(cudaEventSynchronize(m_stop));   // CPU waits until the GPU reaches m_stop
     }
 
     // TODO 3.13: milliseconds between start and stop (cudaEventElapsedTime).
     float elapsedMs() const
     {
-        return 0.0f;
+        float ms{ 0.0f };// make a variable cpu
+        CUDA_CHECK(cudaEventElapsedTime(&ms, m_start, m_stop)); 
+        return ms;                                              
     }
 };
