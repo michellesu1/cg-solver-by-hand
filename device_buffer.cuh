@@ -139,8 +139,8 @@ public:
     // TODO 3.10: destroy both events (cudaEventDestroy).
     ~GpuTimer()
     {
-        CUDA_CHECK(cudaEventCreate(m_start));
-        CUDA_CHECK(cudaEventCreate(m_stop)); //deleting content
+        CUDA_CHECK(cudaEventDestroy(m_start));
+        CUDA_CHECK(cudaEventDestroy(m_stop)); //deleting content
     }
 
     GpuTimer(const GpuTimer&) = delete; 
