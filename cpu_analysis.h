@@ -160,16 +160,18 @@ std::vector<TriCoords<Real>> toAoS(const Mesh<Real>& mesh)
     for (int i = 0; i < n; i++) {
         auto [a, b, c] = mesh.tri(i); // std::array<int, 3> t{ mesh.tri(i) };
 
-        AoS.emplace_back( // essent. builds directly in that slots memory instead of building new.
-            // {} with push_back signifies building new
-            mesh.x(a), mesh.y(a), mesh.x(b), mesh.y(b), mesh.x(c), mesh.y(c) 
-        );
+        // AoS.emplace_back( // essent. builds directly in that slots memory instead of building new.
+        //     // {} with push_back signifies building new
+        //     mesh.x(a), mesh.y(a), mesh.x(b), mesh.y(b), mesh.x(c), mesh.y(c) 
+        // );
 
-        /*
+
 
          AoS.push_back({
             mesh.x(a), mesh.y(a), mesh.x(b), mesh.y(b), mesh.x(c), mesh.y(c), 
         });
+
+        /*
         
         AoS.push_back(TriCoords<Real>{
             .x0 = mesh.x(a), mesh.y(a), mesh.x(b), mesh.y(b), mesh.x(c), mesh.y(c), 

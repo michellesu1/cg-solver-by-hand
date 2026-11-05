@@ -99,13 +99,17 @@ public:
     // TODO 3.7: copy host -> device with cudaMemcpy. Assume host.size() == size().
     void upload(const std::vector<T>& host)
     {
-        
+        //c arrays decay to pointer std::vector class so no decay. 
+        // host is an entire object, host.data() is pointer to actual data
+        CUDA_CHECK(cudaMemcpy(m_ptr, host.data(), sizeof(T)*host.size(), cudaMemcpyHostToDevice));
     }
 
     // TODO 3.8: copy device -> host. Resize host to size() first.
     void download(std::vector<T>& host) const
     {
-
+        //writign into host not const
+        host.resize(m_size);
+        CUDA_CHECK(cudaMemcpy(host.data(), m_ptr, sizeof(T)*host.size(), cudaMemcpyDeviceToHost));
     }
 };
 
