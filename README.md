@@ -30,7 +30,7 @@ You write every function body. The headers have the signatures plus `TODO` comme
 | 7 | Write-up | bandwidth vs peak, explaining performance |
 | 8 | CPU performance (optional) | dependency chains, auto-vectorization, `__restrict__`, `std::thread`, false sharing, cache blocking |
 
-Suggested order: 1 → 2 → 6 (CPU half, `csr.h`) on your Mac, then 3 → 4 → 5 → 6 (GPU half) on Colab, then 7.
+Suggested order: 1 → 2 → 6 (CPU half, `csr.h`) on your Mac, then 3 → 4 → 5 → 6 (GPU half) on MIT Engaging, then 7.
 
 ## Running
 
@@ -49,20 +49,21 @@ make perf   # tests + timings, built with -O3
 make vec    # which loops the compiler vectorized, and why not
 ```
 
-**On Google Colab (Milestones 3-7).** Macs don't have NVIDIA GPUs, so the CUDA parts run on Colab's free GPU:
+**On MIT Engaging (Milestones 3-7).** Macs don't have NVIDIA GPUs, so the CUDA parts run on an Engaging GPU node:
 
-1. In Colab: Runtime → Change runtime type → T4 GPU.
-2. Zip this folder and upload it with the file panel on the left.
-3. Run these in notebook cells:
+1. Clone the repo on Engaging (once): `git clone git@github.com:michellesu1/triangle-mesh-gpu.git ~/triangle-mesh-gpu`
+2. Get a GPU node and load CUDA:
    ```
-   !unzip -o mesh_project.zip
-   %cd mesh_project
-   !nvidia-smi
-   !make gpu
+   salloc -p mit_normal_gpu --gres=gpu:1 -t 01:00:00
+   module load cuda
+   cd ~/triangle-mesh-gpu
+   nvidia-smi
+   make gpu
    ```
-4. Edit the `.cuh` files in Colab's editor (double-click a file in the file panel), then re-run `!make gpu`. Download your finished files at the end so you keep them.
+   (`sinfo -o "%P %G" | grep -i gpu` lists GPU partitions if that one is rejected; `module avail cuda` lists CUDA versions.)
+3. Edit the `.cuh` files, re-run `make gpu`, then `git commit` and `git push` so your Mac can `git pull` the work.
 
-On a GPU other than a T4, pass its architecture: `!make gpu ARCH=sm_80` (A100) or `ARCH=sm_89` (L4).
+The default `ARCH` is `sm_89` (L40S). On another GPU, pass its architecture: `make gpu ARCH=sm_80` (A100), `ARCH=sm_90` (H100), or `ARCH=sm_70` (V100).
 
 `./test_gpu 200` runs on a smaller mesh, which is handy while debugging.
 
