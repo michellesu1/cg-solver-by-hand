@@ -10,7 +10,9 @@
 #include "cpu_analysis.h"
 #include "device_buffer.cuh"
 
-constexpr int BLOCK_SIZE = 256; // threads per block (a multiple of the warp size, 32)
+constexpr int BLOCK_SIZE = 256; // threads per block (a multiple of the warp size, 32).
+
+// block warp threads
 
 // Given: a sensible grid size for n elements. Enough blocks to fill every
 // SM several times over, without launching millions of tiny blocks; the
@@ -38,12 +40,28 @@ template <typename Real>
 __global__ void areaKernelSoA(const Real* x0, const Real* y0, const Real* x1, const Real* y1,
                               const Real* x2, const Real* y2, Real* out, int n)
 {
+    int start = blockIdx.x * blockDim.x + threadIdx.x;
+    int step = gridDim.x * blockDim.x;
+    for (int i = start; i < n; i += step) {
+        out[i] = triangleArea(x0[i], y0[i], x1[i], y1[i], x2[i], y2[i]);
+    }
+
 }
 
 // TODO 4.2: the same, reading from an array of TriCoords structs.
 template <typename Real>
 __global__ void areaKernelAoS(const TriCoords<Real>* tris, Real* out, int n)
 {
+    int start = blockIdx.x * blockDim.x + threadIdx.x;
+    int step = gridDim.x * blockDim.x;
+
+    for (int i = start; i < n; i += step) {
+        const TriCoords<Real>& t = tris[i]; // tris[i] is struct direct not pointer
+        out[i] = triangleArea(t.x0, t.y0, t.x1, t.y1, t.x2, t.y2);
+    }
+    //launches per thread. each thread has unique (blockIdx, threadIdx) combo as identifier.
+    // each thread knows what triangle it's currently working on
+    // if n < threads then each thread only does one and it never loops
 }
 
 // TODO 4.3: launch areaKernelSoA with gridSizeFor(n) blocks of BLOCK_SIZE threads.
@@ -51,12 +69,22 @@ template <typename Real>
 void launchAreaSoA(const Real* x0, const Real* y0, const Real* x1, const Real* y1, const Real* x2,
                    const Real* y2, Real* out, int n)
 {
+    areaKernelSoA<<<gridSizeFor(n), BLOCK_SIZE>>>(x0, y0, x1, y1, x2, y2, out, n); //
+    // # of blocks, becomes gridDim
+            // needed = (n + 256 - 1) / 256;   // blocks needed so every element gets its own thread (rounded up)
+            // cap    = numSMs * 8;            // about 8 blocks per SM is enough to keep the GPU busy
+            // return min(needed, cap);
+    CUDA_CHECK(cudaGetLastError());
 }
 
 // TODO 4.4: launch areaKernelAoS.
 template <typename Real>
 void launchAreaAoS(const TriCoords<Real>* tris, Real* out, int n)
 {
+    
+    areaKernelAoS<<<gridSizeFor(n), BLOCK_SIZE>>>(tris, out, n); //
+    CUDA_CHECK(cudaGetLastError());
+
 }
 
 // ============================================================================
@@ -67,11 +95,20 @@ void launchAreaAoS(const TriCoords<Real>* tris, Real* out, int n)
 // TODO 5.1: naive. Every thread atomicAdds each of its elements into *out.
 __global__ void reduceAtomicKernel(const float* in, float* out, int n)
 {
+    int start = blockIdx.x * blockDim.x + threadIdx.x;
+    int step  = gridDim.x * blockDim.x;
+
+    for (int i = start; i < n; i += step) {
+        const float area = in[i];
+        atomicAdd(out, area); // out address, value
+    }
+
 }
 
 inline void launchReduceAtomic(const float* in, float* out, int n)
 {
-    // TODO 5.1: launch it
+    reduceAtomicKernel<<<gridSizeFor(n), BLOCK_SIZE>>>(in, out, n);
+    CUDA_CHECK(cudaGetLastError());
 }
 
 // TODO 5.2: shared-memory tree reduction.
@@ -88,11 +125,51 @@ inline void launchReduceAtomic(const float* in, float* out, int n)
 template <int BLOCK>
 __global__ void reduceSharedKernel(const float* in, float* out, int n)
 {
+    // O(gridDim) atomic adds. the folding part per block is O(blockDim) (1/2 +...sum)
+
+template <int BLOCK>
+__global__ void reduceSharedKernel(const float* in, float* out, int n)
+{
+    int start = blockIdx.x * blockDim.x + threadIdx.x;
+    int step  = gridDim.x * blockDim.x;
+    float sum = 0.0f; // ALL ON REGISTERS 
+    for (int i = start; i < n; i += step) {
+        sum += in[i];
+    }
+
+    // put on block's shared
+    __shared__ float sdata[BLOCK];
+    sdata[BLOCK] = sum;
+    __syncthreads();
+
+    // Stage 2b: fold in half until slot 0 holds the block total
+    for (int stride = BLOCK / 2; stride > 0; stride /= 2) {
+        if (____ < stride) {
+            sdata[____] += sdata[____];   // left slot += matching right slot
+        }
+        __syncthreads();               // OUTSIDE the if: every thread must reach it
+    }
+
+    // Stage 3: one thread per block adds the block total into *out
+    if (____ == 0) {
+        atomicAdd(____, ____);         // where, how much
+    }
+}
+
+inline void launchReduceShared(const float* in, float* out, int n)
+{
+    reduceSharedKernel<BLOCK_SIZE><<<____, ____>>>(in, out, n);
+    CUDA_CHECK(cudaGetLastError());
+}
+
 }
 
 inline void launchReduceShared(const float* in, float* out, int n)
 {
     // TODO 5.2: launch reduceSharedKernel<BLOCK_SIZE>
+    reduceSharedKernel<<<gridSizeFor(n), BLOCK_SIZE>>>(in, out, n);
+    CUDA_CHECK(cudaGetLastError());
+
 }
 
 // TODO 5.3: warp-shuffle reduction.
@@ -106,12 +183,15 @@ inline void launchReduceShared(const float* in, float* out, int n)
 template <int BLOCK>
 __global__ void reduceShuffleKernel(const float* in, float* out, int n)
 {
+
 }
 
 inline void launchReduceShuffle(const float* in, float* out, int n)
 {
     // TODO 5.3: launch reduceShuffleKernel<BLOCK_SIZE>
 }
+
+
 
 // ============================================================================
 // Milestone 6 (GPU half): sparse matrix-vector product, y = A * x
@@ -123,6 +203,7 @@ template <typename Real>
 __global__ void spmvKernel(int rows, const int* rowPtr, const int* colIdx, const Real* values,
                            const Real* x, Real* y)
 {
+
 }
 
 // TODO 6.4: launch spmvKernel over `rows` rows.
@@ -130,4 +211,5 @@ template <typename Real>
 void launchSpmv(int rows, const int* rowPtr, const int* colIdx, const Real* values, const Real* x,
                 Real* y)
 {
+
 }

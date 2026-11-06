@@ -140,7 +140,9 @@ public:
     ~GpuTimer()
     {
         CUDA_CHECK(cudaEventDestroy(m_start));
-        CUDA_CHECK(cudaEventDestroy(m_stop)); //deleting content
+        CUDA_CHECK(cudaEventDestroy(m_stop)); //deletes the mem that m_stop points to
+        // this is technically dangling now
+
     }
 
     GpuTimer(const GpuTimer&) = delete; 
