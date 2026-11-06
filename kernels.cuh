@@ -122,9 +122,8 @@ inline void launchReduceAtomic(const float* in, float* out, int n)
 //   4. Thread 0 atomicAdds the block's total into *out.
 // BLOCK is a template parameter, so the shared array size is a compile-time
 // constant.
-template <int BLOCK>
-__global__ void reduceSharedKernel(const float* in, float* out, int n)
-{
+
+
     // O(gridDim) atomic adds. the folding part per block is O(blockDim) (1/2 +...sum)
 
 template <int BLOCK>
@@ -138,36 +137,30 @@ __global__ void reduceSharedKernel(const float* in, float* out, int n)
     }
 
     // put on block's shared
-    __shared__ float sdata[BLOCK];
-    sdata[BLOCK] = sum;
-    __syncthreads();
+    __shared__ float sdata[BLOCK]; // only once per block
+    sdata[threadIdx.x] = sum;
 
-    // Stage 2b: fold in half until slot 0 holds the block total
+    // fold in half until slot 0 holds the block total
+    //theres only one total collapse per block. no threads do the same work.
     for (int stride = BLOCK / 2; stride > 0; stride /= 2) {
-        if (____ < stride) {
-            sdata[____] += sdata[____];   // left slot += matching right slot
+        __syncthreads();
+        if (threadIdx.x < stride) {
+            sdata[threadIdx.x] += sdata[threadIdx.x+stride];
         }
-        __syncthreads();               // OUTSIDE the if: every thread must reach it
     }
 
-    // Stage 3: one thread per block adds the block total into *out
-    if (____ == 0) {
-        atomicAdd(____, ____);         // where, how much
+    // one thread per block adds the block total into *out
+    if (threadIdx.x == 0) {
+        atomicAdd(out, sdata[0]);
     }
 }
 
-inline void launchReduceShared(const float* in, float* out, int n)
-{
-    reduceSharedKernel<BLOCK_SIZE><<<____, ____>>>(in, out, n);
-    CUDA_CHECK(cudaGetLastError());
-}
 
-}
 
 inline void launchReduceShared(const float* in, float* out, int n)
 {
     // TODO 5.2: launch reduceSharedKernel<BLOCK_SIZE>
-    reduceSharedKernel<<<gridSizeFor(n), BLOCK_SIZE>>>(in, out, n);
+    reduceSharedKernel<BLOCK_SIZE><<<gridSizeFor(n), BLOCK_SIZE>>>(in, out, n);
     CUDA_CHECK(cudaGetLastError());
 
 }
