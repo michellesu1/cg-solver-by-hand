@@ -143,7 +143,7 @@ __global__ void reduceSharedKernel(const float* in, float* out, int n)
     // fold in half until slot 0 holds the block total
     //theres only one total collapse per block. no threads do the same work.
     for (int stride = BLOCK / 2; stride > 0; stride /= 2) {
-        __syncthreads();
+        __syncthreads(); //always outside loop that depends on threadIdx cond
         if (threadIdx.x < stride) {
             sdata[threadIdx.x] += sdata[threadIdx.x+stride];
         }
@@ -154,7 +154,6 @@ __global__ void reduceSharedKernel(const float* in, float* out, int n)
         atomicAdd(out, sdata[0]);
     }
 }
-
 
 
 inline void launchReduceShared(const float* in, float* out, int n)
@@ -176,12 +175,48 @@ inline void launchReduceShared(const float* in, float* out, int n)
 template <int BLOCK>
 __global__ void reduceShuffleKernel(const float* in, float* out, int n)
 {
+    int start = blockIdx.x * blockDim.x + threadIdx.x;
+    int step  = gridDim.x * blockDim.x;
+    float v = 0.0f;
+    for (int i = start; i < n; i += step) {
+        v += in[i];
+    }
+    // v holds this thread's sum
 
+    // ===== NEW. IN WARP
+    int lane = threadIdx.x % 32;
+    int warp = threadIdx.x / 32;
+
+    // fold once per warp, registers only
+    for (int offset = 16; offset > 0; offset /= 2) {
+        v += __shfl_down_sync(0xffffffff, v, offset); //32 bits
+
+    }
+    // v holds that warp's sum when it's lane 0
+
+    __shared__ float warpSums[BLOCK / 32];
+    if (lane == 0) {                    
+        warpSums[warp] = v;
+    }
+    __syncthreads();
+
+    // v now holds warp sums if it's 0 to 7 of warp 0
+    if (warp == 0) {                    
+        v = (lane < BLOCK / 32) ? warpSums[lane] : 0.0f;   // lanes 0–7 real, 8–31 zero
+        for (int offset = 8; offset > 0; offset /= 2) {
+            v += __shfl_down_sync(0xffffffff, v, offset);
+        }
+
+        if (threadIdx.x == 0) {
+            atomicAdd(out, v);
+        }
+    }
 }
 
 inline void launchReduceShuffle(const float* in, float* out, int n)
 {
-    // TODO 5.3: launch reduceShuffleKernel<BLOCK_SIZE>
+    reduceShuffleKernel<BLOCK_SIZE><<<gridSizeFor(n), BLOCK_SIZE>>>(in, out, n);
+    CUDA_CHECK(cudaGetLastError());
 }
 
 
