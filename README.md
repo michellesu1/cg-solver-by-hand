@@ -1,21 +1,7 @@
-# GPU mesh toolkit
+# GPU mesh toolkit exercise
 
-Build a triangle mesh in C++, move it to the GPU, and run analysis kernels on it, timing everything.
-
+Build a triangle mesh in C++ and move it to the GPU.
 You write every function body. The headers have the signatures plus `TODO` comments, and the tests tell you what passes. Don't edit the test files.
-
-## Files
-
-| File | Milestone | You write |
-|---|---|---|
-| `mesh.h` | 1 | `Mesh<Real>` class, `constexpr` area helper, grid generator |
-| `cpu_analysis.h` | 2 | analysis functions, AoS/SoA conversion |
-| `device_buffer.cuh` | 3 | `DeviceBuffer<T>` and `GpuTimer` (RAII classes) |
-| `kernels.cuh` | 4, 5, 6 | area kernels, three reductions, CSR SpMV |
-| `csr.h` | 6 | building a sparse matrix, CPU SpMV |
-| `RESULTS.md` | 7 | your timings and explanations |
-| `cpu_perf.h` | 8 (optional) | CPU performance: accumulators, SIMD, threads, false sharing, cache blocking |
-| `test_cpu.cpp`, `test_gpu.cu`, `bench_cpu.cpp` | | tests (given) |
 
 ## Milestones
 
