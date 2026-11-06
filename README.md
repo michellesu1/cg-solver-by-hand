@@ -1,6 +1,7 @@
 # GPU mesh toolkit exercise
 
 Build a triangle mesh in C++ and move it to the GPU.
+
 You write every function body. The headers have the signatures plus `TODO` comments, and the tests tell you what passes. Don't edit the test files.
 
 ## Milestones
