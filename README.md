@@ -1,6 +1,6 @@
 # GPU CG thermal solver
 
-Build a triangle mesh and CG solver. You write every function body by hand. The headers have the signatures plus `TODO` comments, and the tests tell you what passes. Don't edit the test files.
+Build a simple triangle mesh and CG solver. Write every function body by hand. The headers have the signatures plus `TODO` comments, and the tests tell you what passes. Don't edit the test files.
 
 Discretizing heat conduction on a triangle mesh gives a sparse graph Laplacian (CSR), so explicit time steps reduce to repeated SpMV and steady-state solves reduce to Conjugate Gradient: SpMV plus dot-product reductions and axpy updates. The C++ side builds the CSR matrix. The CUDA side covers the kernels a solver depends on: coalesced SoA, reductions, shared memory, and a row-parallel SpMV whose indirect gathers expose the cost of irregular meshes. Every kernel is validated against a CPU reference within float tolerance and benchmarked against the L40S's ~864 GB/s peak. Together they form the core of a GPU CG thermal solver.
 
